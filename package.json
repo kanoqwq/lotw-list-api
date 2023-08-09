@@ -28,6 +28,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.0.3",
-    "koa": "^2.13.4"
+    "koa": "^2.13.4",
+    "toad-scheduler": "^3.0.0"
   }
 }

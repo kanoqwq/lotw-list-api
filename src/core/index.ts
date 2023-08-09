@@ -1,8 +1,8 @@
 import { parseData } from './actions/parseData'
 import { fetchData } from './utils/fetch'
 import { login } from './actions/login'
-import { logout } from './actions/logout'
 import { configs } from './utils/config'
+import createInterval from './utils/createScheduler'
 
 //input your user info in .env file
 const loginData: LoginData = {
@@ -10,8 +10,17 @@ const loginData: LoginData = {
     password: configs.LOTW_PWD
 }
 
-
 const resultDataArray: Array<ResultData> = []
+
+createInterval(() => {
+    resultDataArray.length = 0
+    console.log('缓存已清除');
+}, 14400)
+
+// setInterval(() => {
+//     resultDataArray.length = 0
+//     console.log('缓存已清除');
+// }, 14400 * 1000)
 
 const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     //find cookie
@@ -38,10 +47,6 @@ const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     }
 }
 
-setInterval(() => {
-    resultDataArray.length = 0
-    console.log('缓存已清除');
-}, 14400 * 1000)
 
 export const getQsoData = async (): Promise<ResultData[]> => {
     //缓存失效

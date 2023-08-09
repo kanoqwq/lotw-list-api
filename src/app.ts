@@ -19,4 +19,4 @@ app.use(router.routes())
 
 
 app.listen(4545)
-console.log('服务启动成功! 监听地址: http://localhost:4545');
+console.log('server is running at: http://localhost:4545');
