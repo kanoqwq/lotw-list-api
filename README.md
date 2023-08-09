@@ -8,8 +8,8 @@
 用法：
 
 ```bash
-npm i
-npm run dev
+yarn install
+yarn run dev
 ```
 
 Request URL: **localhost:4545/lotw**
