@@ -14,13 +14,9 @@ const resultDataArray: Array<ResultData> = []
 
 createInterval(() => {
     resultDataArray.length = 0
-    console.log('缓存已清除');
+    console.log('缓存已清除.');
 }, 14400)
 
-// setInterval(() => {
-//     resultDataArray.length = 0
-//     console.log('缓存已清除');
-// }, 14400 * 1000)
 
 const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     //find cookie
@@ -47,7 +43,6 @@ const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     }
 }
 
-
 export const getQsoData = async (): Promise<ResultData[]> => {
     //缓存失效
     if (resultDataArray.length === 0) {
@@ -73,5 +68,4 @@ export const getQsoData = async (): Promise<ResultData[]> => {
     }
 
 }
-
-
+export const getData = () => resultDataArray

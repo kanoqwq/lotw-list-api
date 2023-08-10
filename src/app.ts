@@ -7,7 +7,7 @@ const app = new Koa();
 //错误拦截器
 app.use((ctx, next) => {
     let { method, url } = ctx
-    console.log({ method, url });
+    console.log({ method, url});
     return next().catch((err) => {
         console.log(err);
     })
