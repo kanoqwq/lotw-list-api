@@ -14,9 +14,9 @@ yarn run dev
 
 FrontPage DEMO：[LotW status (kanokano.cn)](https://api.kanokano.cn/lotw-status/)
 
-FrontPage DEMO download：[DEMO PAGE](https://pan.kanokano.cn/d/%E4%B8%B4%E6%97%B6%E3%81%AE%E5%AD%98%E5%82%A8/LotW-demo-page.zip)
+FrontPage DEMO download：[DEMO PAGE](https://pan.kanokano.cn/d/%E4%B8%B4%E6%97%B6%E3%81%AE%E5%AD%98%E5%82%A8/lotw-list-api.zip)
 
-可在`./static/js/main.8d579581.js` 中查找 `https://api.kanokano.cn/lotw-get` 替换为自己的api即可
+可在`./static/js/main.xxx.js` 中查找 `/lotw-get` 替换为自己的api
 
 Request URL: **localhost:4545/lotw**
 method: **get**
