@@ -2,7 +2,6 @@ import { parseData } from './actions/parseData'
 import { fetchData } from './utils/fetch'
 import { login } from './actions/login'
 import { configs } from './utils/config'
-// import createInterval from './utils/createScheduler'
 
 //input your user info in .env file
 const loginData: LoginData = {
