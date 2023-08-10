@@ -2,7 +2,7 @@ import { parseData } from './actions/parseData'
 import { fetchData } from './utils/fetch'
 import { login } from './actions/login'
 import { configs } from './utils/config'
-import createInterval from './utils/createScheduler'
+// import createInterval from './utils/createScheduler'
 
 //input your user info in .env file
 const loginData: LoginData = {
@@ -11,11 +11,9 @@ const loginData: LoginData = {
 }
 
 const resultDataArray: Array<ResultData> = []
+let expiredTime = Date.now();
+let isRequesting = false
 
-createInterval(() => {
-    resultDataArray.length = 0
-    console.log('缓存已清除.');
-}, 14400)
 
 
 const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
@@ -45,8 +43,10 @@ const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
 
 export const getQsoData = async (): Promise<ResultData[]> => {
     //缓存失效
-    if (resultDataArray.length === 0) {
+    if ((resultDataArray.length === 0 || expiredTime < Date.now()) && isRequesting != true) {
+        resultDataArray.length = 0
         try {
+            isRequesting = true
             const headers = await login(loginData)
             if (!headers) {
                 console.log('login failed!');
@@ -55,6 +55,8 @@ export const getQsoData = async (): Promise<ResultData[]> => {
             await getQsos({ headers, url: 'https://lotw.arrl.org/lotwuser/qsos?qso_query=1&awg_id=&ac_acct=&qso_callsign=&qso_owncall=&qso_startdate=&qso_starttime=&qso_enddate=&qso_endtime=&qso_mode=&qso_band=&qso_dxcc=&qso_sort=QSO+Date&qso_descend=yes&acct_sel=%3B' })
             console.log('ok,total ' + resultDataArray.length + ' qsos');
             if (resultDataArray.length) {
+                //一小时过期
+                expiredTime = Date.now() + 3600 * 1000
                 return resultDataArray;
             } else {
                 throw new Error("error to fetch data.")
@@ -62,6 +64,8 @@ export const getQsoData = async (): Promise<ResultData[]> => {
         }
         catch (e: any) {
             throw e
+        } finally {
+            isRequesting = false
         }
     } else {
         return resultDataArray;
