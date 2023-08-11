@@ -6,6 +6,8 @@ const app = new Koa();
 
 //错误拦截器
 app.use((ctx, next) => {
+    //跨域
+    // ctx.set("Access-Control-Allow-Origin", "*")
     let { method, url } = ctx
     console.log({ method, url});
     return next().catch((err) => {

@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "module": "CommonJS",
     "sourceMap": true,
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
     "moduleResolution": "node"
   },
   "files": [
@@ -17,7 +16,7 @@
   ],
   "include": [
     ".eslintrc.js",
-    "src"
+    "./src/**/*"
   ],
   "exclude": [
     "node_modules",
