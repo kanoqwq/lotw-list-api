@@ -9,7 +9,8 @@
 
 ```bash
 yarn install
-yarn run dev
+yarn run build
+yarn start
 ```
 
 FrontPage DEMO：[LotW status (kanokano.cn)](https://api.kanokano.cn/lotw-status/)
