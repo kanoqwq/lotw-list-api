@@ -19,5 +19,17 @@ FrontPage DEMO Repo：[DEMO PAGE](https://github.com/kanoqwq/lotw-list-frontpage
 
 可在`./static/js/main.xxx.js` 中查找 `/lotw-get` 替换为自己的api
 
-Request URL: **localhost:4545/lotw**
-method: **get**
+### API
+
+```javascript
+//返回列表数据
+router.get('/lotw', Controller.getQsos)
+
+//展示详细信息
+//query参数: qso: number | string
+router.get('/lotw/qsldetails',Controller.getQSLDetails)
+
+//导出数据
+router.get('/downloadfile', Controller.exportFile)
+```
+
