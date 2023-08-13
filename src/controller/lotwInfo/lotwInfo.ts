@@ -1,5 +1,5 @@
 import Koa from 'koa'
-import { getQsoData, getData } from "../../core"
+import { getQsoData, getData, getQSLData } from "../../core"
 import { exportToXlsx } from "../../core/actions/exportToxlsx"
 export default {
     //逻辑写在这
@@ -41,6 +41,31 @@ export default {
                 }
             } else {
                 throw new Error('export to file failed')
+            }
+        } catch (e: any) {
+            ctx.response.status = 500
+            ctx.body = {
+                code: 500,
+                message: e.message
+            }
+        }
+    },
+    getQSLDetails: async (ctx: Koa.Context): Promise<void> => {
+        try {
+            let queryString = ctx.query
+            let qsoparams: string = queryString.qso as string
+            if (!qsoparams) {
+                throw new Error('qso params not found')
+            }
+            if (!isNaN(parseFloat(qsoparams)) && (qsoparams !== parseInt(qsoparams).toString()) || (parseInt(qsoparams) !== Math.abs(parseInt(qsoparams)))) {
+                throw new Error('qso params must be a number')
+            }
+
+            let resData = await getQSLData(qsoparams)
+            ctx.body = {
+                code: 200,
+                message: 'ok',
+                data: resData
             }
         } catch (e: any) {
             ctx.response.status = 500

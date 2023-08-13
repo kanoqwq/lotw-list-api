@@ -26,3 +26,14 @@ interface ResultData {
     QSL: string | undefined;
     [key: string]: any;
 }
+
+interface DetailsData {
+    callSign: string
+    cqZone: string
+    ITUZone: string
+    grid: string
+    myGrid: string
+    satellite: string
+    province: string
+    myProvince: string
+}

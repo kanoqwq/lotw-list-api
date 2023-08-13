@@ -2,6 +2,7 @@ import { parseData } from './actions/parseData'
 import { fetchData } from './utils/fetch'
 import { login } from './actions/login'
 import { configs } from './utils/config'
+import { parseDetails } from './actions/parseDetails'
 
 //input your user info in .env file
 const loginData: LoginData = {
@@ -10,10 +11,9 @@ const loginData: LoginData = {
 }
 
 const resultDataArray: Array<ResultData> = []
+let parsedDataMap: Map<string, DetailsData> = new Map()
 let expiredTime = Date.now();
 let isRequesting = false
-
-
 
 const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     //find cookie
@@ -54,8 +54,8 @@ export const getQsoData = async (): Promise<ResultData[]> => {
             await getQsos({ headers, url: 'https://lotw.arrl.org/lotwuser/qsos?qso_query=1&awg_id=&ac_acct=&qso_callsign=&qso_owncall=&qso_startdate=&qso_starttime=&qso_enddate=&qso_endtime=&qso_mode=&qso_band=&qso_dxcc=&qso_sort=QSO+Date&qso_descend=yes&acct_sel=%3B' })
             console.log('ok,total ' + resultDataArray.length + ' qsos');
             if (resultDataArray.length) {
-                //一小时过期
-                expiredTime = Date.now() + 3600 * 1000
+                //两小时过期
+                expiredTime = Date.now() + 7200 * 1000
                 return resultDataArray;
             } else {
                 throw new Error("error to fetch data.")
@@ -71,4 +71,45 @@ export const getQsoData = async (): Promise<ResultData[]> => {
     }
 
 }
+
+export const getQSLData = async (query: string) => {
+    //clear if max cached size > 500
+    if (parsedDataMap.size > 500) {
+        parsedDataMap.clear()
+    }
+    // if cached
+    if (!(parsedDataMap.get(query))) {
+        try {
+            isRequesting = true
+            const headers = await login(loginData)
+            if (!headers) {
+                console.log('login failed!');
+                throw new Error('login failed! please check your password.')
+            }
+            //find cookie
+            const cookie = headers.getSetCookie()[0]
+            let url = 'https://lotw.arrl.org/lotwuser/qsodetail?qso=' + query;
+            const res = await fetchData({
+                url,
+                headers: {
+                    'Cookie': cookie
+                }
+            })
+            if (res && res.ok) {
+                const data = await res.text()
+                let parsedResData = parseDetails(data)
+                parsedDataMap.set(query, parsedResData)
+                return parsedResData
+            }
+        } catch (e: any) {
+            throw e
+        } finally {
+            isRequesting = false
+        }
+    } else {
+        return parsedDataMap.get(query)
+    }
+}
+
+
 export const getData = () => resultDataArray
