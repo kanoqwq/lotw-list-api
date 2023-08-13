@@ -13,7 +13,9 @@ const loginData: LoginData = {
 const resultDataArray: Array<ResultData> = []
 let parsedDataMap: Map<string, DetailsData> = new Map()
 let expiredTime = Date.now();
+let HeaderExpiredTime = Date.now();
 let isRequesting = false
+let TempHeaders: Headers | null = null
 
 const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     //find cookie
@@ -40,13 +42,23 @@ const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
     }
 }
 
+const getHeader = async () => {
+    //header expired 1h
+    if (HeaderExpiredTime < Date.now()) {
+        console.log('header expired, try to login...');
+        HeaderExpiredTime = Date.now() + 3600 * 1000
+        TempHeaders = await login(loginData)
+    }
+    return TempHeaders
+}
+
 export const getQsoData = async (): Promise<ResultData[]> => {
     //缓存失效
     if ((resultDataArray.length === 0 || expiredTime < Date.now()) && isRequesting != true) {
         resultDataArray.length = 0
         try {
             isRequesting = true
-            const headers = await login(loginData)
+            const headers = await getHeader()
             if (!headers) {
                 console.log('login failed!');
                 throw new Error('login failed! please check your password.')
@@ -77,11 +89,12 @@ export const getQSLData = async (query: string) => {
     if (parsedDataMap.size > 500) {
         parsedDataMap.clear()
     }
+
     // if cached
     if (!(parsedDataMap.get(query))) {
         try {
             isRequesting = true
-            const headers = await login(loginData)
+            const headers = await getHeader()
             if (!headers) {
                 console.log('login failed!');
                 throw new Error('login failed! please check your password.')
