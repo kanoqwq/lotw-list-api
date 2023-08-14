@@ -5,7 +5,9 @@ export default {
     //逻辑写在这
     getQsos: async (ctx: Koa.Context): Promise<void> => {
         try {
-            const qsoData = await getQsoData()
+            let queryString = ctx.query
+            let useCache: string = queryString.cache as string
+            const qsoData = await getQsoData(useCache)
             ctx.body = {
                 code: 200,
                 message: 'ok',

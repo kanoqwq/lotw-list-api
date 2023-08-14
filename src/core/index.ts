@@ -52,9 +52,10 @@ const getHeader = async () => {
     return TempHeaders
 }
 
-export const getQsoData = async (): Promise<ResultData[]> => {
+export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData[]> => {
     //缓存失效
-    if ((resultDataArray.length === 0 || expiredTime < Date.now()) && isRequesting != true) {
+    console.log(useCache);
+    if (useCache === 'no-cache' || (resultDataArray.length === 0 || expiredTime < Date.now()) && isRequesting != true) {
         resultDataArray.length = 0
         try {
             isRequesting = true
