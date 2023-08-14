@@ -23,7 +23,7 @@
     "resetFolder": "rimraf dist/*",
     "compile": "tsc",
     "build": "npm-run-all resetFolder compile",
-    "start": "node ."
+    "start": "pm2 start ./dist/app.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
