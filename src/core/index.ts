@@ -43,7 +43,7 @@ const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
 }
 
 const getHeader = async () => {
-    //header expired 1h
+    //header expired in 1h
     if (HeaderExpiredTime < Date.now()) {
         console.log('header expired, try to login...');
         HeaderExpiredTime = Date.now() + 3600 * 1000
@@ -55,11 +55,12 @@ const getHeader = async () => {
 export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData[]> => {
     //缓存失效
     console.log(useCache);
+    const headers = await getHeader()
     if (isRequesting != true && (useCache === 'no-cache' || (resultDataArray.length === 0 || expiredTime < Date.now()))) {
         resultDataArray.length = 0
         isRequesting = true
         try {
-            const headers = await getHeader()
+
             if (!headers) {
                 console.log('login failed!');
                 throw new Error('login failed! please check your password.')
@@ -90,7 +91,6 @@ export const getQSLData = async (query: string) => {
     if (parsedDataMap.size > 500) {
         parsedDataMap.clear()
     }
-
     // if cached
     if (!(parsedDataMap.get(query))) {
         try {
