@@ -76,6 +76,7 @@ export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData
             }
         }
         catch (e: any) {
+            HeaderExpiredTime = Date.now()
             throw e
         } finally {
             isRequesting = false

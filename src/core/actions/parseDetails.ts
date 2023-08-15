@@ -26,14 +26,26 @@ export function parseDetails(page: string) {
         if (index == 5) {
             let text = $(item).find('tbody').text()
             let trimTextArr = trimAll(text)
+
             if (trimTextArr && trimTextArr.length) {
                 let stationIndex = trimTextArr.indexOf('Station')
                 let workedStationIndex = trimTextArr.indexOf('Worked Station')
-                let station = trimTextArr.slice(stationIndex + 1, workedStationIndex)
+                let myStation = trimTextArr.slice(stationIndex + 1, workedStationIndex)
                 let workedStation = trimTextArr.slice(workedStationIndex + 1, trimTextArr.length)
-                station.forEach((ele) => {
+                console.log(myStation, workedStation);
+
+                myStation.forEach((ele) => {
                     let tmpText = ''
-                    if ((tmpText = ele.replaceAll('Call Sign', '')) !== ele) {
+                    if ((tmpText = ele.replaceAll('Grid', '')) !== ele) {
+                        resData.myGrid = tmpText.trim()
+                    }
+                    if ((tmpText = ele.replaceAll('Province', '')) !== ele) {
+                        resData.myProvince = tmpText.trim()
+                    }
+                })
+                workedStation.forEach((ele) => {
+                    let tmpText = ''
+                    if ((tmpText = ele.replaceAll('Worked', '')) !== ele) {
                         resData.callSign = tmpText.trim()
                     }
                     if ((tmpText = ele.replaceAll('CQ Zone', '')) !== ele) {
@@ -47,18 +59,6 @@ export function parseDetails(page: string) {
                     }
                     if ((tmpText = ele.replaceAll('Province', '')) !== ele) {
                         resData.province = tmpText.trim()
-                    }
-                })
-                workedStation.forEach((ele) => {
-                    let tmpText = ''
-                    if ((tmpText = ele.replaceAll('Call Sign', '')) !== ele) {
-                        resData.callSign = tmpText.trim()
-                    }
-                    if ((tmpText = ele.replaceAll('Grid', '')) !== ele) {
-                        resData.myGrid = tmpText.trim()
-                    }
-                    if ((tmpText = ele.replaceAll('Province', '')) !== ele) {
-                        resData.myProvince = tmpText.trim()
                     }
                     if ((tmpText = ele.replaceAll('Satellite', '')) !== ele) {
                         resData.satellite = tmpText.trim()
