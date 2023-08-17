@@ -56,6 +56,9 @@ export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData
     //缓存失效
     console.log(useCache);
     const headers = await getHeader()
+    if (useCache === 'no-cache') {
+        parsedDataMap.clear()
+    }
     if (isRequesting != true && (useCache === 'no-cache' || (resultDataArray.length === 0 || expiredTime < Date.now()))) {
         resultDataArray.length = 0
         isRequesting = true
