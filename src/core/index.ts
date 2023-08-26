@@ -69,8 +69,9 @@ const cacheJudje = (useCache: string): boolean => {
             vuccSatellite: 0
         }
         return false
+    } else {
+        return true
     }
-    return true
 }
 
 export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData[]> => {
@@ -78,7 +79,9 @@ export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData
     console.log(useCache);
     const headers = await getHeader()
     const isCache = cacheJudje(useCache)
+
     if (isRequesting != true && (!isCache || (resultDataArray.length === 0 || expiredTime < Date.now()))) {
+        console.log(resultDataArray.length);
         resultDataArray.length = 0
         isRequesting = true
         try {
@@ -153,9 +156,8 @@ export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any
     //缓存失效
     console.log(useCache);
     const headers = await getHeader()
-    const isCache = cacheJudje(useCache)
+    const isCache = useCache !== 'no-cache'
     if (isRequesting != true && (!isCache || (resultVuccData.expiredTime < Date.now()))) {
-        resultDataArray.length = 0
         isRequesting = true
         try {
             if (!headers) {
@@ -178,6 +180,7 @@ export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any
                 return resultVuccData
             }
         } catch (e: any) {
+            resultVuccData.expiredTime = Date.now()
             throw e
         } finally {
             isRequesting = false
