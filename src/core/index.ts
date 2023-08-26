@@ -3,6 +3,7 @@ import { fetchData } from './utils/fetch'
 import { login } from './actions/login'
 import { configs } from './utils/config'
 import { parseDetails } from './actions/parseDetails'
+import { parseVuccData } from './actions/parseVUCC'
 
 //input your user info in .env file
 const loginData: LoginData = {
@@ -11,6 +12,12 @@ const loginData: LoginData = {
 }
 
 const resultDataArray: Array<ResultData> = []
+let resultVuccData = {
+    expiredTime: Date.now(),
+    vucc144: 0,
+    vucc432: 0,
+    vuccSatellite: 0
+}
 let parsedDataMap: Map<string, DetailsData> = new Map()
 let expiredTime = Date.now();
 let HeaderExpiredTime = Date.now();
@@ -51,15 +58,27 @@ const getHeader = async () => {
     }
     return TempHeaders
 }
+const cacheJudje = (useCache: string): boolean => {
+    if (useCache === 'no-cache') {
+        parsedDataMap.clear()
+        resultDataArray.length = 0
+        resultVuccData = {
+            expiredTime: Date.now(),
+            vucc144: 0,
+            vucc432: 0,
+            vuccSatellite: 0
+        }
+        return false
+    }
+    return true
+}
 
 export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData[]> => {
     //缓存失效
     console.log(useCache);
     const headers = await getHeader()
-    if (useCache === 'no-cache') {
-        parsedDataMap.clear()
-    }
-    if (isRequesting != true && (useCache === 'no-cache' || (resultDataArray.length === 0 || expiredTime < Date.now()))) {
+    const isCache = cacheJudje(useCache)
+    if (isRequesting != true && (!isCache || (resultDataArray.length === 0 || expiredTime < Date.now()))) {
         resultDataArray.length = 0
         isRequesting = true
         try {
@@ -129,5 +148,43 @@ export const getQSLData = async (query: string) => {
     }
 }
 
+//VUCC
+export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any> => {
+    //缓存失效
+    console.log(useCache);
+    const headers = await getHeader()
+    const isCache = cacheJudje(useCache)
+    if (isRequesting != true && (!isCache || (resultVuccData.expiredTime < Date.now()))) {
+        resultDataArray.length = 0
+        isRequesting = true
+        try {
+            if (!headers) {
+                console.log('login failed!');
+                throw new Error('login failed! please check your password.')
+            }
+            //find cookie
+            const cookie = headers.getSetCookie()[0]
+            let url = 'https://lotw.arrl.org/lotwuser/awardaccount?awardaccountcmd=status&awg_id=VUCC&ac_acct=1';
+            const res = await fetchData({
+                url,
+                headers: {
+                    'Cookie': cookie
+                }
+            })
+            if (res && res.ok) {
+                const data = await res.text()
+                const parsedResData = parseVuccData(data)
+                resultVuccData = { expiredTime: Date.now() + 7200 * 1000, ...parsedResData }
+                return resultVuccData
+            }
+        } catch (e: any) {
+            throw e
+        } finally {
+            isRequesting = false
+        }
+    } else {
+        return resultVuccData
+    }
+}
 
 export const getData = () => resultDataArray

@@ -12,5 +12,6 @@ export async function fetchData({ url, method = 'get', headers, body }: DataFetc
         }
     } catch (e: any) {
         console.log(e.message);
+        throw e
     }
 }

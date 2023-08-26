@@ -1,5 +1,5 @@
 import Koa from 'koa'
-import { getQsoData, getData, getQSLData } from "../../core"
+import { getQsoData, getVuccAwardsData, getData, getQSLData } from "../../core"
 import { exportToXlsx } from "../../core/actions/exportToxlsx"
 export default {
     //逻辑写在这
@@ -12,6 +12,24 @@ export default {
                 code: 200,
                 message: 'ok',
                 total: qsoData.length,
+                data: qsoData
+            }
+        } catch (e: any) {
+            ctx.response.status = 500
+            ctx.body = {
+                code: 500,
+                message: e.message
+            }
+        }
+    },
+    getVuccAwards: async (ctx: Koa.Context): Promise<void> => {
+        try {
+            let queryString = ctx.query
+            let useCache: string = queryString.cache as string
+            const qsoData = await getVuccAwardsData(useCache)
+            ctx.body = {
+                code: 200,
+                message: 'ok',
                 data: qsoData
             }
         } catch (e: any) {
