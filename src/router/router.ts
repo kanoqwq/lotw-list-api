@@ -10,6 +10,8 @@ router.get('/lotw/vuccaward', Controller.getVuccAwards)
 router.get('/lotw/qsldetails', Controller.getQSLDetails)
 //导出数据
 router.get('/lotw/downloadfile', Controller.exportFile)
+//导出ADI File
+router.get('/lotw/adif.adi', Controller.downloadAdiFile)
 //登录
 // router.post('/login')
 //登出

@@ -1,5 +1,5 @@
 import Koa from 'koa'
-import { getQsoData, getVuccAwardsData, getData, getQSLData } from "../../core"
+import { getQsoData, getVuccAwardsData, getData, getQSLData, getAdiFile } from "../../core"
 import { exportToXlsx } from "../../core/actions/exportToxlsx"
 export default {
     //逻辑写在这
@@ -89,6 +89,31 @@ export default {
             }
         } catch (e: any) {
             ctx.response.status = 500
+            ctx.body = {
+                code: 500,
+                message: e.message
+            }
+        }
+    },
+    downloadAdiFile: async (ctx: Koa.Context): Promise<void> => {
+        try {
+            let queryString = ctx.querystring
+            const resText = await getAdiFile(queryString)
+            if (resText) {
+                // console.log(resStream);
+                // 设置content-type请求头
+                ctx.set('Content-Type', 'application/x-arrl-adif; charset=iso-8859-1');
+                // 设置文件名信息请求头
+                ctx.set('Content-Disposition', "attachment; filename=" + encodeURIComponent("myQsoDetails") + ".adi");
+                // 文件名信息由后端返回时必须设置该请求头,否则前端拿不到Content-Disposition响应头信息
+                ctx.set("Access-Control-Expose-Headers", "Content-Disposition")
+                // 将buffer返回给前端
+                ctx.body = resText
+            } else {
+                throw new Error('export to file failed')
+            }
+        } catch (e: any) {
+            ctx.response.status = 200
             ctx.body = {
                 code: 500,
                 message: e.message

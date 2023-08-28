@@ -190,4 +190,52 @@ export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any
     }
 }
 
+
+
+
+// API query params example:
+// qso_query: 1
+// qso_withown: yes
+// qso_qslsince: 2021-08-28
+// qso_qsldetail: yes
+// qso_mydetail: yes
+// qso_owncall: 
+// download_rpt_btn: Download report
+
+let adiFileExpiredTime = Date.now()
+export const getAdiFile = async (queryString: string): Promise<any> => {
+    //强制缓存1分钟
+    const headers = await getHeader()
+    if (isRequesting != true && ((adiFileExpiredTime < Date.now()))) {
+        isRequesting = true
+        try {
+            if (!headers) {
+                console.log('login failed!');
+                throw new Error('login failed! please check your password.')
+            }
+            //find cookie
+            const cookie = headers.getSetCookie()[0]
+            let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${queryString}`;
+            const res = await fetchData({
+                url,
+                headers: {
+                    'Cookie': cookie
+                }
+            })
+            if (res && res.ok) {
+                adiFileExpiredTime = Date.now() + 60 * 1000
+                return await res.text()
+            }
+        } catch (e: any) {
+            adiFileExpiredTime = Date.now()
+            throw e
+        } finally {
+            isRequesting = false
+        }
+    } else {
+        throw new Error("Please wait for 1 minutes to download file !")
+    }
+
+}
+
 export const getData = () => resultDataArray
