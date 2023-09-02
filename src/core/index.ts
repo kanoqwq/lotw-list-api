@@ -206,40 +206,73 @@ export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any
 // qso_owncall: 
 // download_rpt_btn: Download report
 
-let adiFileExpiredTime = Date.now()
-export const getAdiFile = async (queryString: string): Promise<any> => {
+let adiRes = new Map()
+export const getAdiFile = async (queryString: string, loginInfo: any): Promise<any> => {
+    if (adiRes.size > 100) {
+        adiRes.clear()
+    }
     //强制缓存1分钟
-    if (isRequesting != true) {
-        const headers = await getHeader()
-        if ((adiFileExpiredTime < Date.now())) {
-            isRequesting = true
+    const login = loginInfo.login && loginInfo.password ? loginInfo.login : configs.LOTW_USER
+    const pwd = loginInfo.login && loginInfo.password ? loginInfo.password : configs.LOTW_PWD
+    if (!adiRes.get(login)) {
+        adiRes.set(login, { isRequesting: false, expiredTime: Date.now() })
+    }
+    if (!adiRes.get(login).res || (adiRes.get(login).expiredTime < Date.now())) {
+        if (adiRes.get(login).isRequesting != true) {
+            adiRes.set(login, { isRequesting: true })
             try {
-                checkHeaders(headers)
                 //find cookie
-                const cookie = headers?.getSetCookie()[0]
-                let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${queryString}`;
+                let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${'login=' + login + '&password=' + pwd + '&'}qso_qsl=no&${queryString}`;
                 const res = await fetchData({
                     url,
-                    headers: {
-                        'Cookie': cookie
-                    }
                 })
                 if (res && res.ok) {
-                    adiFileExpiredTime = Date.now() + 60 * 1000
+                    adiRes.set(login, { ...adiRes.get(login), res: res.clone(), expiredTime: Date.now() + 60 * 1000 })
                     return res
                 }
             } catch (e: any) {
-                adiFileExpiredTime = Date.now()
+                adiRes.set(login, { ...adiRes.get(login), res: adiRes.get(login).res, expiredTime: Date.now() })
                 throw e
             } finally {
-                isRequesting = false
+                adiRes.set(login, { ...adiRes.get(login), isRequesting: false, res: adiRes.get(login).res })
             }
         } else {
-            throw new Error("Please wait for 1 minutes to download file !")
+            throw new Error('requesting, please wait for minutes...')
+        }
+    } else {
+        return adiRes.get(login).res.clone()
+    }
+
+}
+
+export const downloadAdiFile = async (queryString: string, loginInfo: any): Promise<any> => {
+
+    //强制缓存1分钟
+    const login = configs.LOTW_USER
+    const pwd = configs.LOTW_PWD
+
+    if (isRequesting != true) {
+        isRequesting = true
+        try {
+            //find cookie
+            let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${'login=' + login + '&password=' + pwd + '&'}qso_qsl=no&${queryString}`;
+            const res = await fetchData({
+                url,
+            })
+            if (res && res.ok) {
+                expiredTime = Date.now() + 60 * 1000
+                return res
+            }
+        } catch (e: any) {
+            expiredTime = Date.now()
+            throw e
+        } finally {
+            isRequesting = false
         }
     } else {
         throw new Error('requesting, please wait for minutes...')
     }
+
 }
 
 export const getData = () => resultDataArray

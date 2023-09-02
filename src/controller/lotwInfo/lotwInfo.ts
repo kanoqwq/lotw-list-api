@@ -1,7 +1,8 @@
 import Koa from 'koa'
-import { getQsoData, getVuccAwardsData, getData, getQSLData, getAdiFile } from "../../core"
+import { getQsoData, getVuccAwardsData, downloadAdiFile, getQSLData, getAdiFile } from "../../core"
 import { exportToXlsx } from "../../core/actions/exportToxlsx"
 import { saveADIFile, ADI2Json } from '../../core/utils/adiTools'
+import { configs } from '../../core/utils/config'
 export default {
     //逻辑写在这
     getQsos: async (ctx: Koa.Context): Promise<void> => {
@@ -44,7 +45,10 @@ export default {
     //导出
     exportFile: async (ctx: Koa.Context): Promise<void> => {
         try {
-            const resText = await (await getAdiFile('qso_query=1&qso_withown=yes&qso_qslsince=1979-01-1&qso_owncall=&qso_qsldetail=yes&qso_mydetail=yes')).text()
+            let queryString = ctx.query
+            let login: string = queryString.login as string
+            let password: string = queryString.password as string
+            const resText = await (await getAdiFile('&qso_query=1&qso_qsl=no&qso_qsldetail=yes&qso_withown=yes&qso_qsorxsince=1000-09-02&qso_mydetail=yes', { login, password })).text()
             //Save ADI file to ./adifile
             let saveFlag = await saveADIFile(resText)
             if (!saveFlag.ok) {
@@ -67,7 +71,8 @@ export default {
                     RX: item.FREQ_RX,
                     GRID: item.GRIDSQUARE,
                     'MY GRID': item.MY_GRIDSQUARE,
-                    'QSL DATE': `${item.QSO_DATE?.substring(0,4)}-${item.QSO_DATE?.substring(4, 6)}-${item.QSO_DATE?.substring(6, 8)}`,
+                    'IS QSL?': item.QSL_RCVD == 'Y' ? "YES" : 'NO',
+                    'QSL DATE': `${item.QSO_DATE?.substring(0, 4)}-${item.QSO_DATE?.substring(4, 6)}-${item.QSO_DATE?.substring(6, 8)}`,
                     'TIME ON': `${item.TIME_ON?.substring(0, 2)}:${item.TIME_ON?.substring(2, 4)}:${item.TIME_ON?.substring(4, 6)}`,
                 }
             })
@@ -88,7 +93,7 @@ export default {
                     throw new Error('export to file failed')
                 }
             } else {
-                throw new Error('export to file failed')
+                throw new Error('export to file failed please check your login info !')
             }
         } catch (e: any) {
             ctx.response.status = 500
@@ -126,7 +131,7 @@ export default {
     downloadAdiFile: async (ctx: Koa.Context): Promise<void> => {
         try {
             let queryString = ctx.querystring
-            const resText = await (await getAdiFile(queryString)).text()
+            const resText = await (await downloadAdiFile(queryString, { login: configs.LOTW_USER, password: configs.LOTW_PWD })).text()
             if (resText) {
                 ctx.set('Content-Type', 'application/x-arrl-adif; charset=iso-8859-1');
                 ctx.set('Content-Disposition', "attachment; filename=" + encodeURIComponent("myQsoDetails") + ".adi");
