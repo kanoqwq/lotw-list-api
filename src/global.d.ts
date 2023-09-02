@@ -37,3 +37,31 @@ interface DetailsData {
     province: string
     myProvince: string
 }
+
+interface ADIJsonRecord {
+    BAND?: string,
+    BAND_RX?: string,
+    CALL?: string,
+    COUNTRY?: string,
+    CQZ?: string,
+    DXCC?: string,
+    FREQ?: string,
+    FREQ_RX?: string,
+    GRIDSQUARE?: string,
+    ITUZ?: string,
+    MODE?: string,
+    MY_COUNTRY?: string,
+    MY_CQ_ZONE?: string,
+    MY_DXCC?: string,
+    MY_GRIDSQUARE?: string,
+    MY_ITU_ZONE?: string,
+    MY_STATE?: string,
+    PROP_MODE?: string,
+    QSLRDATE?: string,
+    QSL_RCVD?: string,
+    QSO_DATE?: string,
+    SAT_NAME?: string,
+    STATE?: string,
+    STATION_CALLSIGN?: string,
+    TIME_ON?: string
+}

@@ -1,6 +1,7 @@
 import Koa from 'koa'
 import { getQsoData, getVuccAwardsData, getData, getQSLData, getAdiFile } from "../../core"
 import { exportToXlsx } from "../../core/actions/exportToxlsx"
+import { saveADIFile, ADI2Json } from '../../core/utils/adiTools'
 export default {
     //逻辑写在这
     getQsos: async (ctx: Koa.Context): Promise<void> => {
@@ -43,11 +44,38 @@ export default {
     //导出
     exportFile: async (ctx: Koa.Context): Promise<void> => {
         try {
-            if (getData().length !== 0) {
-                const qsoData = await getQsoData()
-                const resStream = exportToXlsx({ jsonData: qsoData });
+            const resText = await (await getAdiFile('qso_query=1&qso_withown=yes&qso_qslsince=1979-01-1&qso_owncall=&qso_qsldetail=yes&qso_mydetail=yes')).text()
+            //Save ADI file to ./adifile
+            let saveFlag = await saveADIFile(resText)
+            if (!saveFlag.ok) {
+                throw new Error('save file failed!')
+            }
+
+            const resData = await ADI2Json()
+            if (!resData.ok) {
+                throw new Error('adi to json failed!')
+            }
+
+            const jsonData = resData.data.map((item) => {
+                return {
+                    'MY CALL': item.STATION_CALLSIGN,
+                    CALL: item.CALL,
+                    COUNTRY: item.COUNTRY,
+                    MODE: item.MODE,
+                    SAT: item.SAT_NAME,
+                    TX: item.FREQ,
+                    RX: item.FREQ_RX,
+                    GRID: item.GRIDSQUARE,
+                    'MY GRID': item.MY_GRIDSQUARE,
+                    'QSL DATE': `${item.QSO_DATE?.substring(0,4)}-${item.QSO_DATE?.substring(4, 6)}-${item.QSO_DATE?.substring(6, 8)}`,
+                    'TIME ON': `${item.TIME_ON?.substring(0, 2)}:${item.TIME_ON?.substring(2, 4)}:${item.TIME_ON?.substring(4, 6)}`,
+                }
+            })
+            console.log(resData.data.length, resData.ok);
+
+            if (resData.data.length !== 0) {
+                const resStream = exportToXlsx({ jsonData });
                 if (resStream) {
-                    console.log(resStream);
                     // 设置content-type请求头
                     ctx.set('Content-Type', 'application/vnd.openxmlformats');
                     // 设置文件名信息请求头
@@ -98,16 +126,11 @@ export default {
     downloadAdiFile: async (ctx: Koa.Context): Promise<void> => {
         try {
             let queryString = ctx.querystring
-            const resText = await getAdiFile(queryString)
+            const resText = await (await getAdiFile(queryString)).text()
             if (resText) {
-                // console.log(resStream);
-                // 设置content-type请求头
                 ctx.set('Content-Type', 'application/x-arrl-adif; charset=iso-8859-1');
-                // 设置文件名信息请求头
                 ctx.set('Content-Disposition', "attachment; filename=" + encodeURIComponent("myQsoDetails") + ".adi");
-                // 文件名信息由后端返回时必须设置该请求头,否则前端拿不到Content-Disposition响应头信息
                 ctx.set("Access-Control-Expose-Headers", "Content-Disposition")
-                // 将buffer返回给前端
                 ctx.body = resText
             } else {
                 throw new Error('export to file failed')

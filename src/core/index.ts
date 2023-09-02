@@ -58,6 +58,14 @@ const getHeader = async () => {
     }
     return TempHeaders
 }
+
+const checkHeaders = (headers: Headers | null) => {
+    if (!headers) {
+        console.log('login failed!');
+        HeaderExpiredTime = Date.now()
+        throw new Error('login failed! please check your password.')
+    }
+}
 const cacheJudje = (useCache: string): boolean => {
     if (useCache === 'no-cache') {
         parsedDataMap.clear()
@@ -77,37 +85,35 @@ const cacheJudje = (useCache: string): boolean => {
 export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData[]> => {
     //缓存失效
     console.log(useCache);
-    const headers = await getHeader()
-    const isCache = cacheJudje(useCache)
-
-    if (isRequesting != true && (!isCache || (resultDataArray.length === 0 || expiredTime < Date.now()))) {
-        console.log(resultDataArray.length);
-        resultDataArray.length = 0
-        isRequesting = true
-        try {
-
-            if (!headers) {
-                console.log('login failed!');
-                throw new Error('login failed! please check your password.')
+    if (isRequesting != true) {
+        const headers = await getHeader()
+        const isCache = cacheJudje(useCache)
+        if (!isCache || (resultDataArray.length === 0 || expiredTime < Date.now())) {
+            resultDataArray.length = 0
+            isRequesting = true
+            try {
+                checkHeaders(headers)
+                await getQsos({ headers, url: 'https://lotw.arrl.org/lotwuser/qsos?qso_query=1&awg_id=&ac_acct=&qso_callsign=&qso_owncall=&qso_startdate=&qso_starttime=&qso_enddate=&qso_endtime=&qso_mode=&qso_band=&qso_dxcc=&qso_sort=QSO+Date&qso_descend=yes&acct_sel=%3B' })
+                console.log('ok,total ' + resultDataArray.length + ' qsos');
+                if (resultDataArray.length) {
+                    //两小时过期
+                    expiredTime = Date.now() + 7200 * 1000
+                    return resultDataArray;
+                } else {
+                    throw new Error("error to fetch data.")
+                }
             }
-            await getQsos({ headers, url: 'https://lotw.arrl.org/lotwuser/qsos?qso_query=1&awg_id=&ac_acct=&qso_callsign=&qso_owncall=&qso_startdate=&qso_starttime=&qso_enddate=&qso_endtime=&qso_mode=&qso_band=&qso_dxcc=&qso_sort=QSO+Date&qso_descend=yes&acct_sel=%3B' })
-            console.log('ok,total ' + resultDataArray.length + ' qsos');
-            if (resultDataArray.length) {
-                //两小时过期
-                expiredTime = Date.now() + 7200 * 1000
-                return resultDataArray;
-            } else {
-                throw new Error("error to fetch data.")
+            catch (e: any) {
+                HeaderExpiredTime = Date.now()
+                throw e
+            } finally {
+                isRequesting = false
             }
-        }
-        catch (e: any) {
-            HeaderExpiredTime = Date.now()
-            throw e
-        } finally {
-            isRequesting = false
+        } else {
+            return resultDataArray;
         }
     } else {
-        return resultDataArray;
+        throw new Error('requesting, please wait for minutes...')
     }
 
 }
@@ -122,12 +128,9 @@ export const getQSLData = async (query: string) => {
         try {
             isRequesting = true
             const headers = await getHeader()
-            if (!headers) {
-                console.log('login failed!');
-                throw new Error('login failed! please check your password.')
-            }
+            checkHeaders(headers)
             //find cookie
-            const cookie = headers.getSetCookie()[0]
+            const cookie = headers?.getSetCookie()[0]
             let url = 'https://lotw.arrl.org/lotwuser/qsodetail?qso=' + query;
             const res = await fetchData({
                 url,
@@ -155,38 +158,39 @@ export const getQSLData = async (query: string) => {
 export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any> => {
     //缓存失效
     console.log(useCache);
-    const headers = await getHeader()
-    const isCache = useCache !== 'no-cache'
-    if (isRequesting != true && (!isCache || (resultVuccData.expiredTime < Date.now()))) {
-        isRequesting = true
-        try {
-            if (!headers) {
-                console.log('login failed!');
-                throw new Error('login failed! please check your password.')
-            }
-            //find cookie
-            const cookie = headers.getSetCookie()[0]
-            let url = 'https://lotw.arrl.org/lotwuser/awardaccount?awardaccountcmd=status&awg_id=VUCC&ac_acct=1';
-            const res = await fetchData({
-                url,
-                headers: {
-                    'Cookie': cookie
+    if (isRequesting != true) {
+        const headers = await getHeader()
+        const isCache = useCache !== 'no-cache'
+        if (!isCache || (resultVuccData.expiredTime < Date.now())) {
+            isRequesting = true
+            try {
+                checkHeaders(headers)
+                //find cookie
+                const cookie = headers?.getSetCookie()[0]
+                let url = 'https://lotw.arrl.org/lotwuser/awardaccount?awardaccountcmd=status&awg_id=VUCC&ac_acct=1';
+                const res = await fetchData({
+                    url,
+                    headers: {
+                        'Cookie': cookie
+                    }
+                })
+                if (res && res.ok) {
+                    const data = await res.text()
+                    const parsedResData = parseVuccData(data)
+                    resultVuccData = { expiredTime: Date.now() + 7200 * 1000, ...parsedResData }
+                    return resultVuccData
                 }
-            })
-            if (res && res.ok) {
-                const data = await res.text()
-                const parsedResData = parseVuccData(data)
-                resultVuccData = { expiredTime: Date.now() + 7200 * 1000, ...parsedResData }
-                return resultVuccData
+            } catch (e: any) {
+                resultVuccData.expiredTime = Date.now()
+                throw e
+            } finally {
+                isRequesting = false
             }
-        } catch (e: any) {
-            resultVuccData.expiredTime = Date.now()
-            throw e
-        } finally {
-            isRequesting = false
+        } else {
+            return resultVuccData
         }
     } else {
-        return resultVuccData
+        throw new Error('requesting, please wait for minutes...')
     }
 }
 
@@ -205,37 +209,37 @@ export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any
 let adiFileExpiredTime = Date.now()
 export const getAdiFile = async (queryString: string): Promise<any> => {
     //强制缓存1分钟
-    const headers = await getHeader()
-    if (isRequesting != true && ((adiFileExpiredTime < Date.now()))) {
-        isRequesting = true
-        try {
-            if (!headers) {
-                console.log('login failed!');
-                throw new Error('login failed! please check your password.')
-            }
-            //find cookie
-            const cookie = headers.getSetCookie()[0]
-            let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${queryString}`;
-            const res = await fetchData({
-                url,
-                headers: {
-                    'Cookie': cookie
+    if (isRequesting != true) {
+        const headers = await getHeader()
+        if ((adiFileExpiredTime < Date.now())) {
+            isRequesting = true
+            try {
+                checkHeaders(headers)
+                //find cookie
+                const cookie = headers?.getSetCookie()[0]
+                let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${queryString}`;
+                const res = await fetchData({
+                    url,
+                    headers: {
+                        'Cookie': cookie
+                    }
+                })
+                if (res && res.ok) {
+                    adiFileExpiredTime = Date.now() + 60 * 1000
+                    return res
                 }
-            })
-            if (res && res.ok) {
-                adiFileExpiredTime = Date.now() + 60 * 1000
-                return await res.text()
+            } catch (e: any) {
+                adiFileExpiredTime = Date.now()
+                throw e
+            } finally {
+                isRequesting = false
             }
-        } catch (e: any) {
-            adiFileExpiredTime = Date.now()
-            throw e
-        } finally {
-            isRequesting = false
+        } else {
+            throw new Error("Please wait for 1 minutes to download file !")
         }
     } else {
-        throw new Error("Please wait for 1 minutes to download file !")
+        throw new Error('requesting, please wait for minutes...')
     }
-
 }
 
 export const getData = () => resultDataArray
