@@ -1,9 +1,8 @@
-import { parseData } from './actions/parseData'
 import { fetchData } from './utils/fetch'
 import { login } from './actions/login'
 import { configs } from './utils/config'
-import { parseDetails } from './actions/parseDetails'
 import { parseVuccData } from './actions/parseVUCC'
+import { ADI2Json, saveADIFile } from './utils/adiTools'
 
 //input your user info in .env file
 const loginData: LoginData = {
@@ -23,31 +22,6 @@ let expiredTime = Date.now();
 let HeaderExpiredTime = Date.now();
 let isRequesting = false
 let TempHeaders: Headers | null = null
-
-const getQsos = async ({ headers, url }: DataFetchParams, deps = 1) => {
-    //find cookie
-    const cookie = headers.getSetCookie()[0]
-    //page1
-    const res = await fetchData({
-        url,
-        headers: {
-            'Cookie': cookie
-        }
-    })
-
-    if (res && res.ok) {
-        const data = await res.text()
-        const resData = deps == 1 ? parseData(data) : parseData(data)
-        resultDataArray.push(...resData)
-        if (resData.length) {
-            console.log(`fetch page ${deps}...`);
-            await getQsos({
-                url: 'https://lotw.arrl.org/lotwuser/qsos?qso_page=' + deps + '&awg_id=&ac_acct=',
-                headers
-            }, deps + 1)
-        }
-    }
-}
 
 const getHeader = async () => {
     //header expired in 1h
@@ -82,19 +56,36 @@ const cacheJudje = (useCache: string): boolean => {
     }
 }
 
-export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData[]> => {
+export const getQsoData = async (useCache: string = 'cache'): Promise<any[]> => {
     //缓存失效
     console.log(useCache);
+    const isCache = cacheJudje(useCache)
     if (isRequesting != true) {
-        const headers = await getHeader()
-        const isCache = cacheJudje(useCache)
         if (!isCache || (resultDataArray.length === 0 || expiredTime < Date.now())) {
-            resultDataArray.length = 0
-            isRequesting = true
             try {
-                checkHeaders(headers)
-                await getQsos({ headers, url: 'https://lotw.arrl.org/lotwuser/qsos?qso_query=1&awg_id=&ac_acct=&qso_callsign=&qso_owncall=&qso_startdate=&qso_starttime=&qso_enddate=&qso_endtime=&qso_mode=&qso_band=&qso_dxcc=&qso_sort=QSO+Date&qso_descend=yes&acct_sel=%3B' })
-                console.log('ok,total ' + resultDataArray.length + ' qsos');
+                isRequesting = true
+                resultDataArray.length = 0
+                const resData = await getQsoJsonData({ login: configs.LOTW_USER, password: configs.LOTW_PWD, isCache })
+                resData.data.forEach((item) => {
+                    resultDataArray.push({
+                        callsign: item.STATION_CALLSIGN as string,
+                        worked: item.CALL as string,
+                        grid: item.GRIDSQUARE,
+                        contry: item.COUNTRY,
+                        datetime: `${item.QSO_DATE?.substring(0, 4)}-${item.QSO_DATE?.substring(4, 6)}-${item.QSO_DATE?.substring(6, 8)} ${item.TIME_ON?.substring(0, 2)}:${item.TIME_ON?.substring(2, 4)}:${item.TIME_ON?.substring(4, 6)}`,
+                        band: item.BAND as string,
+                        satellite: item.SAT_NAME as string,
+                        cqzone: item.CQZ,
+                        ituzone: item.ITUZ,
+                        mycqzone: item.MY_CQ_ZONE,
+                        myituzone: item.MY_ITU_ZONE,
+                        mygrid: item.MY_GRIDSQUARE,
+                        mode: item.MODE as string,
+                        freq: item.FREQ as string,
+                        QSL: item.QSL_RCVD == 'Y' ? "YES" : 'NO',
+                    })
+                })
+                console.log('ok,total ' + resData.data.length + ' qsos');
                 if (resultDataArray.length) {
                     //两小时过期
                     expiredTime = Date.now() + 7200 * 1000
@@ -110,47 +101,10 @@ export const getQsoData = async (useCache: string = 'cache'): Promise<ResultData
                 isRequesting = false
             }
         } else {
-            return resultDataArray;
+            return resultDataArray
         }
     } else {
         throw new Error('requesting, please wait for minutes...')
-    }
-
-}
-
-export const getQSLData = async (query: string) => {
-    //clear if max cached size > 500
-    if (parsedDataMap.size > 500) {
-        parsedDataMap.clear()
-    }
-    // if cached
-    if (!(parsedDataMap.get(query))) {
-        try {
-            isRequesting = true
-            const headers = await getHeader()
-            checkHeaders(headers)
-            //find cookie
-            const cookie = headers?.getSetCookie()[0]
-            let url = 'https://lotw.arrl.org/lotwuser/qsodetail?qso=' + query;
-            const res = await fetchData({
-                url,
-                headers: {
-                    'Cookie': cookie
-                }
-            })
-            if (res && res.ok) {
-                const data = await res.text()
-                let parsedResData = parseDetails(data)
-                parsedDataMap.set(query, parsedResData)
-                return parsedResData
-            }
-        } catch (e: any) {
-            throw e
-        } finally {
-            isRequesting = false
-        }
-    } else {
-        return parsedDataMap.get(query)
     }
 }
 
@@ -245,14 +199,14 @@ export const getAdiFile = async (queryString: string, loginInfo: any): Promise<a
 
 }
 
-export const downloadAdiFile = async (queryString: string, loginInfo: any): Promise<any> => {
+let downloading = false
+export const downloadAdiFile = async (queryString: string): Promise<any> => {
 
-    //强制缓存1分钟
     const login = configs.LOTW_USER
     const pwd = configs.LOTW_PWD
 
-    if (isRequesting != true) {
-        isRequesting = true
+    if (downloading != true) {
+        downloading = true
         try {
             //find cookie
             let url = `https://lotw.arrl.org/lotwuser/lotwreport.adi?${'login=' + login + '&password=' + pwd + '&'}qso_qsl=no&${queryString}`;
@@ -267,12 +221,34 @@ export const downloadAdiFile = async (queryString: string, loginInfo: any): Prom
             expiredTime = Date.now()
             throw e
         } finally {
-            isRequesting = false
+            downloading = false
         }
     } else {
         throw new Error('requesting, please wait for minutes...')
     }
 
+}
+
+export const getQsoJsonData = async (loginInfo: any): Promise<{
+    ok: boolean;
+    message?: string | undefined;
+    data: ADIJsonRecord[];
+}> => {
+
+    const resText = loginInfo.isCache ? await (await getAdiFile('&qso_query=1&qso_qsl=no&qso_qsldetail=yes&qso_withown=yes&qso_qsorxsince=1000-09-02&qso_mydetail=yes', { login: loginInfo.login, password: loginInfo.password })).text()
+        : await (await downloadAdiFile('&qso_query=1&qso_qsl=no&qso_qsldetail=yes&qso_withown=yes&qso_qsorxsince=1000-09-02&qso_mydetail=yes')).text()
+    //Save ADI file to ./adifile
+    let saveFlag = await saveADIFile(resText)
+    if (!saveFlag.ok) {
+        throw new Error('save file failed!')
+    }
+
+    const resData = await ADI2Json()
+    if (!resData.ok) {
+        throw new Error('adi to json failed!')
+    } else {
+        return resData
+    }
 }
 
 export const getData = () => resultDataArray

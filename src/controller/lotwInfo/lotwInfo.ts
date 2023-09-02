@@ -1,8 +1,6 @@
 import Koa from 'koa'
-import { getQsoData, getVuccAwardsData, downloadAdiFile, getQSLData, getAdiFile } from "../../core"
+import { getQsoData, getVuccAwardsData, downloadAdiFile, getQsoJsonData } from "../../core"
 import { exportToXlsx } from "../../core/actions/exportToxlsx"
-import { saveADIFile, ADI2Json } from '../../core/utils/adiTools'
-import { configs } from '../../core/utils/config'
 export default {
     //逻辑写在这
     getQsos: async (ctx: Koa.Context): Promise<void> => {
@@ -48,17 +46,8 @@ export default {
             let queryString = ctx.query
             let login: string = queryString.login as string
             let password: string = queryString.password as string
-            const resText = await (await getAdiFile('&qso_query=1&qso_qsl=no&qso_qsldetail=yes&qso_withown=yes&qso_qsorxsince=1000-09-02&qso_mydetail=yes', { login, password })).text()
-            //Save ADI file to ./adifile
-            let saveFlag = await saveADIFile(resText)
-            if (!saveFlag.ok) {
-                throw new Error('save file failed!')
-            }
 
-            const resData = await ADI2Json()
-            if (!resData.ok) {
-                throw new Error('adi to json failed!')
-            }
+            const resData = await getQsoJsonData({ login, password, isCache: true })
 
             const jsonData = resData.data.map((item) => {
                 return {
@@ -76,6 +65,7 @@ export default {
                     'TIME ON': `${item.TIME_ON?.substring(0, 2)}:${item.TIME_ON?.substring(2, 4)}:${item.TIME_ON?.substring(4, 6)}`,
                 }
             })
+
             console.log(resData.data.length, resData.ok);
 
             if (resData.data.length !== 0) {
@@ -103,35 +93,10 @@ export default {
             }
         }
     },
-    getQSLDetails: async (ctx: Koa.Context): Promise<void> => {
-        try {
-            let queryString = ctx.query
-            let qsoparams: string = queryString.qso as string
-            if (!qsoparams) {
-                throw new Error('qso params not found')
-            }
-            if (!isNaN(parseFloat(qsoparams)) && (qsoparams !== parseInt(qsoparams).toString()) || (parseInt(qsoparams) !== Math.abs(parseInt(qsoparams)))) {
-                throw new Error('qso params must be a number')
-            }
-
-            let resData = await getQSLData(qsoparams)
-            ctx.body = {
-                code: 200,
-                message: 'ok',
-                data: resData
-            }
-        } catch (e: any) {
-            ctx.response.status = 500
-            ctx.body = {
-                code: 500,
-                message: e.message
-            }
-        }
-    },
     downloadAdiFile: async (ctx: Koa.Context): Promise<void> => {
         try {
             let queryString = ctx.querystring
-            const resText = await (await downloadAdiFile(queryString, { login: configs.LOTW_USER, password: configs.LOTW_PWD })).text()
+            const resText = await (await downloadAdiFile(queryString)).text()
             if (resText) {
                 ctx.set('Content-Type', 'application/x-arrl-adif; charset=iso-8859-1');
                 ctx.set('Content-Disposition', "attachment; filename=" + encodeURIComponent("myQsoDetails") + ".adi");
