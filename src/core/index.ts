@@ -112,39 +112,32 @@ export const getQsoData = async (useCache: string = 'cache'): Promise<any[]> => 
 export const getVuccAwardsData = async (useCache: string = 'cache'): Promise<any> => {
     //缓存失效
     console.log(useCache);
-    if (isRequesting != true) {
-        const headers = await getHeader()
-        const isCache = useCache !== 'no-cache'
-        if (!isCache || (resultVuccData.expiredTime < Date.now())) {
-            isRequesting = true
-            try {
-                checkHeaders(headers)
-                //find cookie
-                const cookie = headers?.getSetCookie()[0]
-                let url = 'https://lotw.arrl.org/lotwuser/awardaccount?awardaccountcmd=status&awg_id=VUCC&ac_acct=1';
-                const res = await fetchData({
-                    url,
-                    headers: {
-                        'Cookie': cookie
-                    }
-                })
-                if (res && res.ok) {
-                    const data = await res.text()
-                    const parsedResData = parseVuccData(data)
-                    resultVuccData = { expiredTime: Date.now() + 7200 * 1000, ...parsedResData }
-                    return resultVuccData
+    const headers = await getHeader()
+    const isCache = useCache !== 'no-cache'
+    if (!isCache || (resultVuccData.expiredTime < Date.now())) {
+        try {
+            checkHeaders(headers)
+            //find cookie
+            const cookie = headers?.getSetCookie()[0]
+            let url = 'https://lotw.arrl.org/lotwuser/awardaccount?awardaccountcmd=status&awg_id=VUCC&ac_acct=1';
+            const res = await fetchData({
+                url,
+                headers: {
+                    'Cookie': cookie
                 }
-            } catch (e: any) {
-                resultVuccData.expiredTime = Date.now()
-                throw e
-            } finally {
-                isRequesting = false
+            })
+            if (res && res.ok) {
+                const data = await res.text()
+                const parsedResData = parseVuccData(data)
+                resultVuccData = { expiredTime: Date.now() + 7200 * 1000, ...parsedResData }
+                return resultVuccData
             }
-        } else {
-            return resultVuccData
+        } catch (e: any) {
+            resultVuccData.expiredTime = Date.now()
+            throw e
         }
     } else {
-        throw new Error('requesting, please wait for minutes...')
+        return resultVuccData
     }
 }
 
