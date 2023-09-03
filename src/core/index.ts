@@ -82,6 +82,7 @@ export const getQsoData = async (useCache: string = 'cache'): Promise<any[]> => 
                         mygrid: item.MY_GRIDSQUARE,
                         mode: item.MODE as string,
                         freq: item.FREQ as string,
+                        rx: item.FREQ_RX,
                         QSL: item.QSL_RCVD == 'Y' ? "YES" : 'NO',
                     })
                 })
