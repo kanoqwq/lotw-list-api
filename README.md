@@ -2,6 +2,7 @@
 
 > 获取对应账户的LotW QSO记录，返回一个对象数组
 > 支持数据缓存，默认每两小时更新一次数据
+> 支持导出ADIF，XLSX文件
 
 *使用前请创建并更改.`env`文件中的用户信息*
 
@@ -19,17 +20,16 @@ FrontPage DEMO Repo：[DEMO PAGE](https://github.com/kanoqwq/lotw-list-frontpage
 
 可在`./static/js/main.xxx.js` 中查找 `/lotw-get` 替换为自己的api
 
-### API
+### APIS
 
 ```javascript
 //返回列表数据
 router.get('/lotw', Controller.getQsos)
-
-//展示详细信息
-//query参数: qso: number | string
-router.get('/lotw/qsldetails',Controller.getQSLDetails)
-
+//获取VUCC Award 信息
+router.get('/lotw/vuccaward', Controller.getVuccAwards)
 //导出数据
-router.get('/downloadfile', Controller.exportFile)
+router.get('/lotw/downloadfile', Controller.exportFile)
+//导出ADI File
+router.get('/lotw/adif.adi', Controller.downloadAdiFile)
 ```
 
