@@ -17,7 +17,6 @@ let resultVuccData = {
     vucc432: 0,
     vuccSatellite: 0
 }
-let parsedDataMap: Map<string, DetailsData> = new Map()
 let expiredTime = Date.now();
 let HeaderExpiredTime = Date.now();
 let isRequesting = false
@@ -28,7 +27,12 @@ const getHeader = async () => {
     if (HeaderExpiredTime < Date.now()) {
         console.log('header expired, try to login...');
         HeaderExpiredTime = Date.now() + 3600 * 1000
-        TempHeaders = await login(loginData)
+        try {
+            TempHeaders = await login(loginData)
+        } catch (e) {
+            HeaderExpiredTime = Date.now();
+            throw e
+        }
     }
     return TempHeaders
 }
@@ -42,8 +46,6 @@ const checkHeaders = (headers: Headers | null) => {
 }
 const cacheJudje = (useCache: string): boolean => {
     if (useCache === 'no-cache') {
-        parsedDataMap.clear()
-        resultDataArray.length = 0
         resultVuccData = {
             expiredTime: Date.now(),
             vucc144: 0,
@@ -56,57 +58,62 @@ const cacheJudje = (useCache: string): boolean => {
     }
 }
 
+const requestQsoData = async (isCache = true): Promise<any[]> => {
+    try {
+        isRequesting = true
+        const resData = await getQsoJsonData({ login: configs.LOTW_USER, password: configs.LOTW_PWD, isCache })
+        if (resData.ok) {
+            resultDataArray.length = 0
+            resData.data.forEach((item) => {
+                resultDataArray.push({
+                    callsign: item.STATION_CALLSIGN as string,
+                    worked: item.CALL as string,
+                    grid: item.GRIDSQUARE,
+                    contry: item.COUNTRY,
+                    datetime: `${item.QSO_DATE?.substring(0, 4)}-${item.QSO_DATE?.substring(4, 6)}-${item.QSO_DATE?.substring(6, 8)} ${item.TIME_ON?.substring(0, 2)}:${item.TIME_ON?.substring(2, 4)}:${item.TIME_ON?.substring(4, 6)}`,
+                    band: item.BAND as string,
+                    satellite: item.SAT_NAME as string,
+                    cqzone: item.CQZ,
+                    ituzone: item.ITUZ,
+                    mycqzone: item.MY_CQ_ZONE,
+                    myituzone: item.MY_ITU_ZONE,
+                    mygrid: item.MY_GRIDSQUARE,
+                    mode: item.MODE as string,
+                    freq: item.FREQ as string,
+                    rx: item.FREQ_RX,
+                    QSL: item.QSL_RCVD == 'Y' ? "YES" : 'NO',
+                })
+            })
+            console.log('ok,total ' + resData.data.length + ' qsos');
+            if (resultDataArray.length) {
+                //两小时过期
+                expiredTime = Date.now() + 7200 * 1000
+                return resultDataArray;
+            } else {
+                throw new Error("error to fetch data.")
+            }
+        } else {
+            throw new Error("error to fetch data.")
+        }
+    }
+    catch (e: any) {
+        HeaderExpiredTime = Date.now()
+        throw e
+    } finally {
+        isRequesting = false
+    }
+}
+
 export const getQsoData = async (useCache: string = 'cache'): Promise<any[]> => {
     //缓存失效
     console.log(useCache);
     const isCache = cacheJudje(useCache)
     if (isRequesting != true) {
         if (!isCache || (resultDataArray.length === 0 || expiredTime < Date.now())) {
-            try {
-                isRequesting = true
-                resultDataArray.length = 0
-                const resData = await getQsoJsonData({ login: configs.LOTW_USER, password: configs.LOTW_PWD, isCache })
-                resData.data.forEach((item) => {
-                    resultDataArray.push({
-                        callsign: item.STATION_CALLSIGN as string,
-                        worked: item.CALL as string,
-                        grid: item.GRIDSQUARE,
-                        contry: item.COUNTRY,
-                        datetime: `${item.QSO_DATE?.substring(0, 4)}-${item.QSO_DATE?.substring(4, 6)}-${item.QSO_DATE?.substring(6, 8)} ${item.TIME_ON?.substring(0, 2)}:${item.TIME_ON?.substring(2, 4)}:${item.TIME_ON?.substring(4, 6)}`,
-                        band: item.BAND as string,
-                        satellite: item.SAT_NAME as string,
-                        cqzone: item.CQZ,
-                        ituzone: item.ITUZ,
-                        mycqzone: item.MY_CQ_ZONE,
-                        myituzone: item.MY_ITU_ZONE,
-                        mygrid: item.MY_GRIDSQUARE,
-                        mode: item.MODE as string,
-                        freq: item.FREQ as string,
-                        rx: item.FREQ_RX,
-                        QSL: item.QSL_RCVD == 'Y' ? "YES" : 'NO',
-                    })
-                })
-                console.log('ok,total ' + resData.data.length + ' qsos');
-                if (resultDataArray.length) {
-                    //两小时过期
-                    expiredTime = Date.now() + 7200 * 1000
-                    return resultDataArray;
-                } else {
-                    throw new Error("error to fetch data.")
-                }
-            }
-            catch (e: any) {
-                HeaderExpiredTime = Date.now()
-                throw e
-            } finally {
-                isRequesting = false
-            }
-        } else {
-            return resultDataArray
+            requestQsoData()
         }
-    } else {
-        throw new Error('requesting, please wait for minutes...')
     }
+    return resultDataArray
 }
 
 //VUCC

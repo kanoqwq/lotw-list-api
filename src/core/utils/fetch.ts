@@ -1,5 +1,6 @@
 export async function fetchData({ url, method = 'get', headers, body }: DataFetchParams) {
     try {
+        console.log(url,method,headers,body);
         const res = await fetch(url, {
             method,
             headers,
@@ -8,7 +9,7 @@ export async function fetchData({ url, method = 'get', headers, body }: DataFetc
         if (res.ok) {
             return res
         } else {
-            throw new Error('请求失败')
+            throw new Error(await res.text())
         }
     } catch (e: any) {
         console.log(e.message);
